@@ -13,6 +13,9 @@
                                       (cond ((stringp e) `(string ,e))
                                             (t e))) "std::endl")))
 
+(defmacro checked-ioctl (fd cmd arg)
+  `(if (< (funcall ioctl ,fd ,cmd ,arg) 0)
+     (macroexpand (er ,(format nil "ioctl ~a failed." cmd)))))
 
 (defun replace-all (string part replacement &key (test #'char=))
 "Returns a new string in which all the occurences of the part 
@@ -54,12 +57,27 @@ is replaced with replacement."
 		    (with-compilation-unit
 			(raw "//! \\file main.cpp Draw to screen using linux direct rendering manager"))
 					
+		  (include <cstdint>)
+
+		  (include <sys/types.h>)
+		  (include <sys/stat.h>)
+		  (include <fcntl.h>)
+
+		  (include <sys/ioctl.h>)
+		  
+		  (raw " ")
 		  (include <drm/drm.h>)
+		  (raw "// drm/drm.h needs to be patched for C++ to compile, one of the datastructures has an element called virtual")
 		  (include <drm/drm_mode.h>)
-		  (include <fstream>) 
+		  (include <fstream>)
+		  (include <string>)
+		  (include <vector>)
 		  (include <cstring>) ;; memset
 		  (include "cxxopts.hpp")
 		  (include <iomanip>) ;; setw
+		  (include <array>)
+		  (raw " ")
+		  
 		  (raw " ")
 		  (raw "//! \\mainpage Draw using direct rendering manager")
 		  (raw "//! \\section Introduction")
@@ -102,7 +120,9 @@ is replaced with replacement."
 				(with-compilation-unit
 				    (raw "options.add_options()")
 				  (raw "(\"h,help\", \"Print help\")")
-				  (raw "(\"r,rate\",\"frame rate (Hz,double)\",cxxopts::value<double>()->default_value(\"60.0\"));"))
+				  (raw "(\"d,device\",\"device file\",cxxopts::value<std::string>()->default_value(\"/dev/dri/card0\"))")
+				  (raw "(\"r,rate\",\"frame rate (Hz,double)\",cxxopts::value<double>()->default_value(\"60.0\"));")
+				  )
 				(funcall options.parse argc argv)
 				
 				(if (funcall options.count (string "help"))
@@ -111,8 +131,29 @@ is replaced with replacement."
 				     (funcall exit 0)))
 				(macroexpand (e "requested frame rate = "
 						(funcall "options[\"rate\"].as<double>")
-						" Hz"))
-				)
+						" Hz device="
+						(funcall "options[\"device\"].as<std::string>")
+						))
+				(let ((dri_fd :ctor (funcall open "options[\"device\"].as<std::string>().c_str()" O_RDWR)))
+				  (macroexpand (checked-ioctl dri_fd DRM_IOCTL_SET_MASTER 0))
+				  (let ((res{} :type drm_mode_card_res))
+				    (funcall memset &res 0 (funcall sizeof res)) ;; fixme is this required?
+				    (macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETRESOURCES &res))
+				    (statements ,@(loop for i in '(count_fbs count_crtcs count_connectors count_encoders
+							min_width max_width min_height max_height)
+					  collect
+					    `(macroexpand (e ,(format nil "~a = " i)
+							     (slot-value res ,i))))))
+				  (let ((res{} :type drm_mode_card_res))
+				    (with-compilation-unit
+					,@(loop for i in '(fb crtc connector encoder) appending
+					       `(
+						 (decl ((,(format nil "~a_array{}" i) :type "std::array<uint64_t,10>")))
+						 (setf (slot-value res ,(format nil "~a_id_ptr" i))
+						       (funcall reinterpret_cast<uint64_t>
+								,(format nil "~a_array.data()" i)))
+						 )))
+				    (macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETRESOURCES &res)))))
 			      
 			      (raw "catch (const cxxopts::OptionException& e)")
 			      (let ()

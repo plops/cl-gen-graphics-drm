@@ -110,10 +110,17 @@ int main(int argc, char **argv) {
         for (unsigned int i = 0; (i < resources.count_connectors); i += 1) {
           {
             drm_mode_get_connector connector{};
+            memset(&connector, 0, sizeof(connector));
             connector.connector_id = connector_array.at(i);
             if ((ioctl(dri_fd, DRM_IOCTL_MODE_GETCONNECTOR, &connector) < 0)) {
               (std::cerr << "ioctl DRM_IOCTL_MODE_GETCONNECTOR failed."
                          << std::endl);
+            }
+            if ((((connector.count_encoders < 1) ||
+                  (connector.count_modes < 1)) ||
+                 ((!(connector.encoder_id)) || (!(connector.connection))))) {
+              continue;
+              ;
             }
             (std::cout << "count_modes = " << connector.count_modes
                        << std::endl);
@@ -124,6 +131,7 @@ int main(int argc, char **argv) {
             (std::cout << "count_encoders = " << connector.count_encoders
                        << std::endl);
             assert((connector.count_encoders < 20));
+            connector.connector_id = connector_array.at(i);
             std::array<struct drm_mode_modeinfo, 20> modes_array{};
             connector.modes_ptr =
                 reinterpret_cast<uint64_t>(modes_array.data());

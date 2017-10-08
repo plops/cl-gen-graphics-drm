@@ -157,13 +157,24 @@ is replaced with replacement."
 				    (macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETRESOURCES &resources))
 				    (dotimes (i resources.count_connectors)
 				      (let ((connector{} :type drm_mode_get_connector))
+					(funcall memset &connector 0 (funcall sizeof connector)) ;; fixme is this required?
 					(setf connector.connector_id (funcall connector_array.at i))
 					(macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETCONNECTOR &connector))
+					(if (\|||\|
+					       (\|||\|
+						  (< connector.count_encoders 1)
+						  (< connector.count_modes 1))
+					       (\|||\|
+						  (! connector.encoder_id)
+						  (! connector.connection)))
+					    (statements
+					     (raw "continue;")))
 					(statements ,@(loop for i in '(count_modes count_props count_encoders)
-					  appending
-					    `((macroexpand (e ,(format nil "~a = " i)
-							      (slot-value connector ,i)))
-					      (funcall assert (< (slot-value connector ,i) 20)))))
+							 appending
+							   `((macroexpand (e ,(format nil "~a = " i)
+									     (slot-value connector ,i)))
+							     (funcall assert (< (slot-value connector ,i) 20)))))
+					(setf connector.connector_id (funcall connector_array.at i))
 					,@(loop for i in '(modes) appending
 					       `((decl ((,(format nil "~a_array{}" i) :type "std::array<struct drm_mode_modeinfo,20>")))
 						 (setf (slot-value connector ,(format nil "~a_ptr" i))

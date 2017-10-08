@@ -18,7 +18,7 @@ set ( CMAKE_CXX_COMPILER  g++)
 
 # for gcc:
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frounding-math -fext-numeric-literals -fpermissive -march=native -mtune=native -g -std=c++17 -Werror -Wall -Wdouble-promotion  -Wduplicated-cond -Wformat -Wformat=2  -Wlogical-op -Wnull-dereference -Wold-style-cast  -Wshadow -Wuseless-cast")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frounding-math -fext-numeric-literals -fpermissive -march=native -mtune=native -O0 -std=c++17 -Werror -Wall -Wdouble-promotion  -Wduplicated-cond -Wformat -Wformat=2  -Wlogical-op -Wnull-dereference -Wold-style-cast  -Wshadow -Wuseless-cast")
 # -Wduplicated-branches -Wrestrict -Wjump-misses-init
 
 

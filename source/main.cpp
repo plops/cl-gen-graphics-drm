@@ -1,4 +1,5 @@
 //! \file main.cpp Draw to screen using linux direct rendering manager
+#include <cassert>
 #include <cstdint>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -77,33 +78,57 @@ int main(int argc, char **argv) {
                      << std::endl);
         }
         (std::cout << "count_fbs = " << res.count_fbs << std::endl);
+        assert((res.count_fbs < 10));
         (std::cout << "count_crtcs = " << res.count_crtcs << std::endl);
+        assert((res.count_crtcs < 10));
         (std::cout << "count_connectors = " << res.count_connectors
                    << std::endl);
+        assert((res.count_connectors < 10));
         (std::cout << "count_encoders = " << res.count_encoders << std::endl);
+        assert((res.count_encoders < 10));
         (std::cout << "min_width = " << res.min_width << std::endl);
+        assert((res.min_width < 10));
         (std::cout << "max_width = " << res.max_width << std::endl);
+        assert((res.max_width < 10));
         (std::cout << "min_height = " << res.min_height << std::endl);
+        assert((res.min_height < 10));
         (std::cout << "max_height = " << res.max_height << std::endl);
+        assert((res.max_height < 10));
       }
       {
-        drm_mode_card_res res{};
+        drm_mode_card_res resources{};
         std::array<uint64_t, 10> fb_array{};
 
-        res.fb_id_ptr = reinterpret_cast<uint64_t>(fb_array.data());
+        resources.fb_id_ptr = reinterpret_cast<uint64_t>(fb_array.data());
         std::array<uint64_t, 10> crtc_array{};
 
-        res.crtc_id_ptr = reinterpret_cast<uint64_t>(crtc_array.data());
+        resources.crtc_id_ptr = reinterpret_cast<uint64_t>(crtc_array.data());
         std::array<uint64_t, 10> connector_array{};
 
-        res.connector_id_ptr =
+        resources.connector_id_ptr =
             reinterpret_cast<uint64_t>(connector_array.data());
         std::array<uint64_t, 10> encoder_array{};
 
-        res.encoder_id_ptr = reinterpret_cast<uint64_t>(encoder_array.data());
-        if ((ioctl(dri_fd, DRM_IOCTL_MODE_GETRESOURCES, &res) < 0)) {
+        resources.encoder_id_ptr =
+            reinterpret_cast<uint64_t>(encoder_array.data());
+        if ((ioctl(dri_fd, DRM_IOCTL_MODE_GETRESOURCES, &resources) < 0)) {
           (std::cerr << "ioctl DRM_IOCTL_MODE_GETRESOURCES failed."
                      << std::endl);
+        }
+        for (unsigned int i = 0; (i < resources.count_connectors); i += 1) {
+          {
+            drm_mode_get_connector connector{};
+            if ((ioctl(dri_fd, DRM_IOCTL_MODE_GETCONNECTOR, &connector) < 0)) {
+              (std::cerr << "ioctl DRM_IOCTL_MODE_GETCONNECTOR failed."
+                         << std::endl);
+            }
+            (std::cout << "count_modes = " << connector.count_modes
+                       << std::endl);
+            (std::cout << "count_props = " << connector.count_props
+                       << std::endl);
+            (std::cout << "count_encoders = " << connector.count_encoders
+                       << std::endl);
+          }
         }
       }
     }

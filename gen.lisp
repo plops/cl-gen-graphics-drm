@@ -58,7 +58,7 @@ is replaced with replacement."
 			(raw "//! \\file main.cpp Draw to screen using linux direct rendering manager"))
 					
 		  (include <cstdint>)
-
+		  (include <cassert>)
 		  (include <sys/types.h>)
 		  (include <sys/stat.h>)
 		  (include <fcntl.h>)
@@ -141,19 +141,26 @@ is replaced with replacement."
 				    (macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETRESOURCES &res))
 				    (statements ,@(loop for i in '(count_fbs count_crtcs count_connectors count_encoders
 							min_width max_width min_height max_height)
-					  collect
-					    `(macroexpand (e ,(format nil "~a = " i)
-							     (slot-value res ,i))))))
-				  (let ((res{} :type drm_mode_card_res))
+					  appending
+					    `((macroexpand (e ,(format nil "~a = " i)
+							      (slot-value res ,i)))
+					      (funcall assert (< (slot-value res ,i) 10))))))
+				  (let ((resources{} :type drm_mode_card_res))
 				    (with-compilation-unit
 					,@(loop for i in '(fb crtc connector encoder) appending
-					       `(
-						 (decl ((,(format nil "~a_array{}" i) :type "std::array<uint64_t,10>")))
-						 (setf (slot-value res ,(format nil "~a_id_ptr" i))
+					       `((decl ((,(format nil "~a_array{}" i) :type "std::array<uint64_t,10>")))
+						 (setf (slot-value resources ,(format nil "~a_id_ptr" i))
 						       (funcall reinterpret_cast<uint64_t>
-								,(format nil "~a_array.data()" i)))
-						 )))
-				    (macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETRESOURCES &res)))))
+								,(format nil "~a_array.data()" i))))))
+				    (macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETRESOURCES &resources))
+				    (dotimes (i resources.count_connectors)
+				      (let ((connector{} :type drm_mode_get_connector))
+					(macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETCONNECTOR &connector))
+					(statements ,@(loop for i in '(count_modes count_props count_encoders)
+					  appending
+					    `((macroexpand (e ,(format nil "~a = " i)
+							      (slot-value connector ,i))))))
+					)))))
 			      
 			      (raw "catch (const cxxopts::OptionException& e)")
 			      (let ()

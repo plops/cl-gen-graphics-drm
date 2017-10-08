@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 2.6)
-#set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake")
+set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake")
 
-#include(cotire)
+include(cotire)
 #set (COTIRE_MINIMUM_NUMBER_OF_TARGET_SOURCES 1)
 project (drm_draw)
 set(CMAKE_CXX_EXTENSIONS ON)
@@ -19,7 +19,6 @@ set ( CMAKE_CXX_COMPILER  g++)
 # for gcc:
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frounding-math -fext-numeric-literals -fpermissive -march=native -mtune=native -g -std=c++17 -Werror -Wall -Wdouble-promotion  -Wduplicated-cond -Wformat -Wformat=2  -Wlogical-op -Wnull-dereference -Wold-style-cast  -Wshadow -Wuseless-cast")
-
 # -Wduplicated-branches -Wrestrict -Wjump-misses-init
 
 
@@ -32,7 +31,7 @@ target_compile_features(drm_draw PUBLIC PRIVATE cxx_lambdas cxx_range_for)
 #find_library(ics_lib ics)
 #target_link_libraries(drm_draw ${ics_lib})
   
-#cotire(trace)
+cotire(drm_draw)
 
 
 

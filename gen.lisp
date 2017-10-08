@@ -139,27 +139,43 @@ is replaced with replacement."
 				  (let ((res{} :type drm_mode_card_res))
 				    (funcall memset &res 0 (funcall sizeof res)) ;; fixme is this required?
 				    (macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETRESOURCES &res))
-				    (statements ,@(loop for i in '(count_fbs count_crtcs count_connectors count_encoders
-							min_width max_width min_height max_height)
+				    (statements ,@(loop for i in '(count_fbs count_crtcs count_connectors count_encoders)
 					  appending
 					    `((macroexpand (e ,(format nil "~a = " i)
 							      (slot-value res ,i)))
-					      (funcall assert (< (slot-value res ,i) 10))))))
+					      (funcall assert (< (slot-value res ,i) 10)))))
+				    (statements ,@(loop for i in '(min_width max_width min_height max_height)
+					  appending
+					    `((macroexpand (e ,(format nil "~a = " i)
+							      (slot-value res ,i)))))))
 				  (let ((resources{} :type drm_mode_card_res))
-				    (with-compilation-unit
-					,@(loop for i in '(fb crtc connector encoder) appending
-					       `((decl ((,(format nil "~a_array{}" i) :type "std::array<uint64_t,10>")))
-						 (setf (slot-value resources ,(format nil "~a_id_ptr" i))
-						       (funcall reinterpret_cast<uint64_t>
-								,(format nil "~a_array.data()" i))))))
+				    ,@(loop for i in '(fb crtc connector encoder) appending
+					   `((decl ((,(format nil "~a_array{}" i) :type "std::array<uint64_t,10>")))
+					     (setf (slot-value resources ,(format nil "~a_id_ptr" i))
+						   (funcall reinterpret_cast<uint64_t>
+							    ,(format nil "~a_array.data()" i)))))
 				    (macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETRESOURCES &resources))
 				    (dotimes (i resources.count_connectors)
 				      (let ((connector{} :type drm_mode_get_connector))
+					(setf connector.connector_id (funcall connector_array.at i))
 					(macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETCONNECTOR &connector))
 					(statements ,@(loop for i in '(count_modes count_props count_encoders)
 					  appending
 					    `((macroexpand (e ,(format nil "~a = " i)
-							      (slot-value connector ,i))))))
+							      (slot-value connector ,i)))
+					      (funcall assert (< (slot-value connector ,i) 20)))))
+					,@(loop for i in '(modes) appending
+					       `((decl ((,(format nil "~a_array{}" i) :type "std::array<struct drm_mode_modeinfo,20>")))
+						 (setf (slot-value connector ,(format nil "~a_ptr" i))
+						       (funcall reinterpret_cast<uint64_t>
+								,(format nil "~a_array.data()" i)))))
+					,@(loop for i in '(props prop_values encoders) appending
+					       `((decl ((,(format nil "~a_array{}" i) :type "std::array<uint64_t,20>")))
+						 (setf (slot-value connector ,(format nil "~a_ptr" i))
+						       (funcall reinterpret_cast<uint64_t>
+								,(format nil "~a_array.data()" i)))))
+					(macroexpand (checked-ioctl dri_fd DRM_IOCTL_MODE_GETCONNECTOR &connector))
+					
 					)))))
 			      
 			      (raw "catch (const cxxopts::OptionException& e)")

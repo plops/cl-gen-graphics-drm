@@ -87,28 +87,20 @@ int main(int argc, char **argv) {
         (std::cout << "count_encoders = " << res.count_encoders << std::endl);
         assert((res.count_encoders < 10));
         (std::cout << "min_width = " << res.min_width << std::endl);
-        assert((res.min_width < 10));
         (std::cout << "max_width = " << res.max_width << std::endl);
-        assert((res.max_width < 10));
         (std::cout << "min_height = " << res.min_height << std::endl);
-        assert((res.min_height < 10));
         (std::cout << "max_height = " << res.max_height << std::endl);
-        assert((res.max_height < 10));
       }
       {
         drm_mode_card_res resources{};
         std::array<uint64_t, 10> fb_array{};
-
         resources.fb_id_ptr = reinterpret_cast<uint64_t>(fb_array.data());
         std::array<uint64_t, 10> crtc_array{};
-
         resources.crtc_id_ptr = reinterpret_cast<uint64_t>(crtc_array.data());
         std::array<uint64_t, 10> connector_array{};
-
         resources.connector_id_ptr =
             reinterpret_cast<uint64_t>(connector_array.data());
         std::array<uint64_t, 10> encoder_array{};
-
         resources.encoder_id_ptr =
             reinterpret_cast<uint64_t>(encoder_array.data());
         if ((ioctl(dri_fd, DRM_IOCTL_MODE_GETRESOURCES, &resources) < 0)) {
@@ -118,16 +110,36 @@ int main(int argc, char **argv) {
         for (unsigned int i = 0; (i < resources.count_connectors); i += 1) {
           {
             drm_mode_get_connector connector{};
+            connector.connector_id = connector_array.at(i);
             if ((ioctl(dri_fd, DRM_IOCTL_MODE_GETCONNECTOR, &connector) < 0)) {
               (std::cerr << "ioctl DRM_IOCTL_MODE_GETCONNECTOR failed."
                          << std::endl);
             }
             (std::cout << "count_modes = " << connector.count_modes
                        << std::endl);
+            assert((connector.count_modes < 20));
             (std::cout << "count_props = " << connector.count_props
                        << std::endl);
+            assert((connector.count_props < 20));
             (std::cout << "count_encoders = " << connector.count_encoders
                        << std::endl);
+            assert((connector.count_encoders < 20));
+            std::array<struct drm_mode_modeinfo, 20> modes_array{};
+            connector.modes_ptr =
+                reinterpret_cast<uint64_t>(modes_array.data());
+            std::array<uint64_t, 20> props_array{};
+            connector.props_ptr =
+                reinterpret_cast<uint64_t>(props_array.data());
+            std::array<uint64_t, 20> prop_values_array{};
+            connector.prop_values_ptr =
+                reinterpret_cast<uint64_t>(prop_values_array.data());
+            std::array<uint64_t, 20> encoders_array{};
+            connector.encoders_ptr =
+                reinterpret_cast<uint64_t>(encoders_array.data());
+            if ((ioctl(dri_fd, DRM_IOCTL_MODE_GETCONNECTOR, &connector) < 0)) {
+              (std::cerr << "ioctl DRM_IOCTL_MODE_GETCONNECTOR failed."
+                         << std::endl);
+            }
           }
         }
       }
